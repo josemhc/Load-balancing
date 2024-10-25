@@ -1,11 +1,15 @@
 Node1:
 ``
+
 sudo apt update
 sudo apt install mysql-server -y
+
 ``
 
 ``
+
 cd /etc/mysql/mysql.conf.d/mysqld.cnf
+
 ``
 This file has:
 
@@ -25,26 +29,36 @@ max_binlog_size   = 100M
 
 Then, restart the service mysql:
 ``
+
 sudo systemctl restart mysql
+
 ``
 connect to mysql:
 ``
+
 sudo mysql
+
 ``
 ``
+
 CREATE USER 'repl'@'%' IDENTIFIED BY 'password';
 GRANT REPLICATION SLAVE ON *.* TO 'repl'@'%';
 FLUSH PRIVILEGES;
 ``
+
 We need to change something to have secure SSL and not have errors:
 ``
+
 ALTER USER 'repl'@'192.168.60.%' IDENTIFIED WITH mysql_native_password BY 'password';
 FLUSH PRIVILEGES;
 SHOW MASTER STATUS;
 ``
+
 ``
+
 mysql> SHOW MASTER STATUS;
 ``
+
 +------------------+----------+--------------+------------------+-------------------+
 | File             | Position | Binlog_Do_DB | Binlog_Ignore_DB | Executed_Gtid_Set |
 +------------------+----------+--------------+------------------+-------------------+
@@ -55,11 +69,15 @@ Save file and position to other nodes
 
 On the others nodes:
 ``
+
 sudo apt update
 sudo apt install mysql-server -y
+
 ``
 ``
+
 cd /etc/mysql/mysql.conf.d/mysqld.cnf
+
 ``
 Node 2:
 
@@ -74,22 +92,27 @@ server-id = 3
 relay-log = /var/log/mysql/mysql-relay-bin.log
 ``
 sudo mysql
+
 ``
 
 ``
+
 CHANGE MASTER TO
 MASTER_HOST='192.168.60.11',
 MASTER_USER='repl',
 MASTER_PASSWORD='password',
 MASTER_LOG_FILE='mysql-bin.xxxxxx',  
 MASTER_LOG_POS=XXX;
+
 ``
 
 Remember to change MASTER_LOG_FILE and MASTER_LOG_POS=XXX; to value's master (Node1)
 
 ``
+
 START SLAVE;
 SHOW SLAVE STATUS\G;
+
 ``
 
 If there is not error and the value of the variables "Slave_IO_Running" and "Slave_SQL_Running" 
@@ -100,19 +123,25 @@ We can test the service with:
 From node1:
 
 ``
+
 CREATE DATABASE test;
 USE test;
 CREATE TABLE prueba (id INT PRIMARY KEY, mensaje VARCHAR(50));
 INSERT INTO prueba VALUES (1, 'Hola desde el maestro');
+
 ``
 
 From node 2 and 3:
 
 ``
+
 sudo mysql
+
 ``
 ``
+
 mysql> SELECT * FROM test.prueba;
+
 ``
 +----+-----------------------+
 | id | mensaje               |
