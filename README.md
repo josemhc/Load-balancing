@@ -25,11 +25,13 @@ log_error = /var/log/mysql/error.log
 max_binlog_size   = 100M
 
 Luego, reiniciar el servicio de mysql:
+
 ``
 sudo systemctl restart mysql
 ``
 
 Conectar a mysql:
+
 ``
 sudo mysql
 ``
@@ -40,6 +42,7 @@ FLUSH PRIVILEGES;
 ``
 
 (Importante) Necesitamos cambiar una propiedad del usuario replicador para que tenga seguridad SSL y prevenir errores:
+
 ``
 ALTER USER 'repl'@'192.168.60.%' IDENTIFIED WITH mysql_native_password BY 'password';
 FLUSH PRIVILEGES;
@@ -48,6 +51,7 @@ SHOW MASTER STATUS;
 ``
 mysql> SHOW MASTER STATUS;
 ``
+
 +------------------+----------+--------------+------------------+-------------------+
 | File             | Position | Binlog_Do_DB | Binlog_Ignore_DB | Executed_Gtid_Set |
 +------------------+----------+--------------+------------------+-------------------+
@@ -57,6 +61,7 @@ mysql> SHOW MASTER STATUS;
 Guardar el registro de las columnas "File" y "Position" para configurar los nodos esclavos
 
 En los otros nodos:
+
 ``
 sudo apt update
 sudo apt install mysql-server -y
@@ -65,6 +70,7 @@ sudo apt install mysql-server -y
 cd /etc/mysql/mysql.conf.d/mysqld.cnf
 sudo vim mysqld.cnf
 ``
+
 Node 2:
 
 bind-address = 192.168.60.12 
@@ -85,7 +91,9 @@ super_read_only = 1
 ``
 sudo mysql
 ``
+
 (Importante) Cambiar MASTER_LOG_FILE y MASTER_LOG_POS; Con los valores que nos arrojó el nodo maestro antes
+
 ``
 CHANGE MASTER TO
 MASTER_HOST='192.168.60.11',
@@ -120,10 +128,13 @@ Desde node 2 and 3:
 ``
 sudo mysql
 ``
+
 Probar sincronizacion
+
 ``
 mysql> SELECT * FROM test.prueba;
 ``
+
 +----+-----------------------+
 | id | mensaje               |
 +----+-----------------------+
@@ -136,14 +147,13 @@ Ahora, nosotros instalaremos y configuraremos nginx en el nodo1:
 Create new config to proxy on /etc/nginx/nginx.conf
 
 ``
-
 cd /etc/nginx/nginx.conf
 sudo vim /etc/nginx/nginx.conf
-
 ``
 
 this file must have:
 
+```
 stream {
     # Definir upstream para los esclavos (balanceo de carga)
     upstream mysql_slaves {
@@ -168,14 +178,12 @@ stream {
         proxy_connect_timeout 1s;
     }
 }
-
+```
 
 Ahora reiniciamos nginx
 
 ``
-
 sudo systemctl restart nginx
-
 ``
 
 Para probarlo
@@ -191,21 +199,27 @@ Prueba de lectura:
 
 Prueba de escritura:
 
-    Prueba de que se puede hacer escritura al nodo 1:
+Prueba de que se puede hacer escritura al nodo 1:
 
-    mysql -h 192.168.60.11 -P 3307 -u test -p -e "INSERT INTO test.prueba (id, mensaje) VALUES (7, 'PruebaEscritura2');"
+```
+mysql -h 192.168.60.11 -P 3307 -u test -p -e "INSERT INTO test.prueba (id, mensaje) VALUES (7, 'PruebaEscritura2');"
+```
 
-    Prueba de que NO se puede hacer escritura a los nodos esclavos:
+Prueba de que NO se puede hacer escritura a los nodos esclavos:
 
-    Node2:
+Node2:
 
-    mysql -h 192.168.60.11 -P 3308 -u test -p -e "INSERT INTO test.prueba (id, mensaje) VALUES (2, 'PruebaNodo2');"
+```
+mysql -h 192.168.60.11 -P 3308 -u test -p -e "INSERT INTO test.prueba (id, mensaje) VALUES (2, 'PruebaNodo2');"
+```
 
-    Node3:
+Node3:
 
-    mysql -h 192.168.60.11 -P 3308 -u test -p -e "INSERT INTO test.prueba (id, mensaje) VALUES (3, 'PruebaNodo3');"
+```
+mysql -h 192.168.60.11 -P 3308 -u test -p -e "INSERT INTO test.prueba (id, mensaje) VALUES (3, 'PruebaNodo3');"
+```
 
-    Pruebas de balanceo de carga con sysbench:
+Pruebas de balanceo de carga con sysbench:
 
 ``````
     sysbench \
@@ -221,6 +235,7 @@ Prueba de escritura:
 ``````
 
 Prueba de escritura:
+
 ``````
 sysbench \
   --db-driver=mysql \
@@ -254,6 +269,7 @@ sysbench \
 ``````
 
 Eliminar bd de prueba:
+
 ``````
 sysbench \
   --db-driver=mysql \
