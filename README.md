@@ -50,11 +50,11 @@ FLUSH PRIVILEGES;
 
 (Importante) Necesitamos cambiar una propiedad del usuario replicador para que tenga seguridad SSL y prevenir errores:
 
-``
+````
 ALTER USER 'repl'@'192.168.60.%' IDENTIFIED WITH mysql_native_password BY 'password';
 FLUSH PRIVILEGES;
 SHOW MASTER STATUS;
-``
+````
 
 Mostrar estado del maestro:
 
