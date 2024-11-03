@@ -19,6 +19,13 @@ Vagrant.configure("2") do |config|
       node3.vm.network :private_network, ip: "192.168.60.13"
       node3.vm.hostname = "node3"
     end
+
+    # Define the fourth VM (Sysbench)
+    config.vm.define :sysbench do |sysbench|
+      sysbench.vm.box = "bento/ubuntu-22.04"
+      sysbench.vm.network :private_network, ip: "192.168.60.14"
+      sysbench.vm.hostname = "sysbench"
+    end
   end
   
   
