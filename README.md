@@ -37,6 +37,9 @@ Conectar a mysql:
 ``
 sudo mysql
 ``
+
+Crear usuario para replica
+
 ``
 CREATE USER 'repl'@'%' IDENTIFIED BY 'password';
 GRANT REPLICATION SLAVE ON *.* TO 'repl'@'%';
@@ -50,6 +53,9 @@ ALTER USER 'repl'@'192.168.60.%' IDENTIFIED WITH mysql_native_password BY 'passw
 FLUSH PRIVILEGES;
 SHOW MASTER STATUS;
 ``
+
+Mostrar estado del maestro:
+
 ``
 mysql> SHOW MASTER STATUS;
 +------------------+----------+--------------+------------------+-------------------+
