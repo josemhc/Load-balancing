@@ -67,9 +67,9 @@ mysql> SHOW MASTER STATUS;
 +------------------+----------+--------------+------------------+-------------------+
 ````
 
-Guardar el registro de las columnas "File" y "Position" para configurar los nodos esclavos
+Memorizar o anotar el registro de las columnas "File" y "Position" para configurar los nodos esclavos
 
-En los otros nodos:
+En los nodos esclavos:
 
 ````
 sudo apt update
