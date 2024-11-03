@@ -7,6 +7,7 @@ sudo apt install mysql-server -y
 ``
 cd /etc/mysql/mysql.conf.d/mysqld.cnf
 ``
+
 Este archivo debe tener:
 
 [mysqld]
@@ -27,6 +28,7 @@ Luego, reiniciar el servicio de mysql:
 ``
 sudo systemctl restart mysql
 ``
+
 Conectar a mysql:
 ``
 sudo mysql
@@ -36,6 +38,7 @@ CREATE USER 'repl'@'%' IDENTIFIED BY 'password';
 GRANT REPLICATION SLAVE ON *.* TO 'repl'@'%';
 FLUSH PRIVILEGES;
 ``
+
 (Importante) Necesitamos cambiar una propiedad del usuario replicador para que tenga seguridad SSL y prevenir errores:
 ``
 ALTER USER 'repl'@'192.168.60.%' IDENTIFIED WITH mysql_native_password BY 'password';
