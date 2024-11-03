@@ -5,7 +5,8 @@ sudo apt install mysql-server -y
 ````
 
 ````
-cd /etc/mysql/mysql.conf.d/mysqld.cnf
+cd /etc/mysql/mysql.conf.d
+sudo vim /etc/mysql/mysql.conf.d/mysqld.cnf
 ````
 
 Este archivo debe tener:
@@ -51,7 +52,7 @@ FLUSH PRIVILEGES;
 (Importante) Necesitamos cambiar una propiedad del usuario replicador para que tenga seguridad SSL y prevenir errores:
 
 ````
-ALTER USER 'repl'@'192.168.60.%' IDENTIFIED WITH mysql_native_password BY 'password';
+ALTER USER 'repl'@'%' IDENTIFIED WITH mysql_native_password BY 'password';
 FLUSH PRIVILEGES;
 SHOW MASTER STATUS;
 ````
@@ -76,13 +77,14 @@ sudo apt update
 sudo apt install mysql-server -y
 ````
 ````
-cd /etc/mysql/mysql.conf.d/mysqld.cnf
-sudo vim mysqld.cnf
+cd /etc/mysql/mysql.conf.d/
+sudo vim /etc/mysql/mysql.conf.d/mysqld.cnf
 ````
 
 Node 2:
 
 ````
+[mysqld]
 bind-address = 192.168.60.12 
 server-id = 2 
 relay-log = /var/log/mysql/mysql-relay-bin.log
@@ -93,6 +95,7 @@ super_read_only = 1
 Node 3:
 
 ````
+[mysqld]
 bind-address = 192.168.60.13
 server-id = 3
 relay-log = /var/log/mysql/mysql-relay-bin.log
