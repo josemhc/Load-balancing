@@ -103,6 +103,8 @@ read_only = 1
 super_read_only = 1
 ````
 
+En cada nodo esclavo reiniciar el servicio de mysql
+
 ````
 sudo mysql
 ````
