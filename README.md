@@ -158,7 +158,7 @@ mysql> SELECT * FROM test.prueba;
 Ahora, nosotros instalaremos y configuraremos nginx en el nodo1:
 
 
-Create new config to proxy on /etc/nginx/nginx.conf
+Agregar este bloque de configuracion a /etc/nginx/nginx.conf
 
 ````
 cd /etc/nginx/nginx.conf
@@ -205,6 +205,8 @@ Para probarlo
 El puerto 3308 es de los nodos esclavos (solo lectura)
 El puerto 3307 es del nodo maestro (Escritura)
 
+Realice estas pruebas en cualquier maquina virtual que tenga mysql instalado (node2, node3, sysbench)
+
 Prueba de lectura:
 
 Se redirige a un nodo esclavo mediante least_conn lo cual distribuye conexiones según los nodos esclavos menos activos
@@ -237,6 +239,16 @@ mysql -h 192.168.60.11 -P 3308 -u test -p -e "INSERT INTO test.prueba (id, mensa
 
 Pruebas de balanceo de carga con sysbench:
 
+En la maquina virtual Sysbench instalar:
+
+````
+sudo apt update && sudo apt install -y sysbench
+sysbench --version
+````
+
+En esta misma maquina realizar las pruebas:
+Crear las base de datos de prueba "sbtest"
+
 ``````
     sysbench \
   --db-driver=mysql \
@@ -250,7 +262,7 @@ Pruebas de balanceo de carga con sysbench:
   oltp_read_write prepare
 ``````
 
-Prueba de escritura:
+Prueba de escritura por el puerto asignado al nodo maestro (3307):
 
 ``````
 sysbench \
@@ -267,7 +279,7 @@ sysbench \
   oltp_read_write run
 ``````
 
-Prueba de lectura:
+Prueba de lectura por el puerto asignado a los nodos esclavos (3308):
 
 ``````
 sysbench \
