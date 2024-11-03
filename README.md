@@ -165,7 +165,7 @@ cd /etc/nginx/nginx.conf
 sudo vim /etc/nginx/nginx.conf
 ````
 
-this file must have:
+Se debe agregar al archivo el siguiente bloque de configuracion:
 
 ````
 stream {
