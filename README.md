@@ -10,6 +10,7 @@ cd /etc/mysql/mysql.conf.d/mysqld.cnf
 
 Este archivo debe tener:
 
+```
 [mysqld]
 
 bind-address = 192.168.60.11
@@ -23,6 +24,7 @@ myisam-recover-options  = BACKUP
 
 log_error = /var/log/mysql/error.log
 max_binlog_size   = 100M
+```
 
 Luego, reiniciar el servicio de mysql:
 
@@ -50,13 +52,12 @@ SHOW MASTER STATUS;
 ``
 ``
 mysql> SHOW MASTER STATUS;
-``
-
 +------------------+----------+--------------+------------------+-------------------+
 | File             | Position | Binlog_Do_DB | Binlog_Ignore_DB | Executed_Gtid_Set |
 +------------------+----------+--------------+------------------+-------------------+
 | mysql-bin.000002 |     1015 |              |                  |                   |
 +------------------+----------+--------------+------------------+-------------------+
+``
 
 Guardar el registro de las columnas "File" y "Position" para configurar los nodos esclavos
 
@@ -73,20 +74,23 @@ sudo vim mysqld.cnf
 
 Node 2:
 
+``
 bind-address = 192.168.60.12 
 server-id = 2 
 relay-log = /var/log/mysql/mysql-relay-bin.log
 read_only = 1
 super_read_only = 1
-
+``
 
 Node 3:
 
+``
 bind-address = 192.168.60.13
 server-id = 3
 relay-log = /var/log/mysql/mysql-relay-bin.log
 read_only = 1
 super_read_only = 1
+``
 
 ``
 sudo mysql
@@ -135,11 +139,13 @@ Probar sincronizacion
 mysql> SELECT * FROM test.prueba;
 ``
 
+``
 +----+-----------------------+
 | id | mensaje               |
 +----+-----------------------+
 |  1 | Hola desde el maestro |
 +----+-----------------------+
+``
 
 Ahora, nosotros instalaremos y configuraremos nginx en el nodo1:
 
@@ -193,9 +199,11 @@ El puerto 3307 es del nodo maestro (Escritura)
 
 Prueba de lectura:
 
-  Se redirige a un nodo esclavo mediante least_conn lo cual distribuye conexiones según los nodos esclavos menos activos
+Se redirige a un nodo esclavo mediante least_conn lo cual distribuye conexiones según los nodos esclavos menos activos
 
-  mysql -h 192.168.60.11 -P 3308 -u test -p -e "SELECT * FROM test.prueba;"
+``
+mysql -h 192.168.60.11 -P 3308 -u test -p -e "SELECT * FROM test.prueba;"
+``
 
 Prueba de escritura:
 
