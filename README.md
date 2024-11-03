@@ -106,6 +106,12 @@ super_read_only = 1
 En cada nodo esclavo reiniciar el servicio de mysql
 
 ````
+sudo systemctl restart mysql
+````
+
+Configurar conexion al maestro para hacer la replica:
+
+````
 sudo mysql
 ````
 
