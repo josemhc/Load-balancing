@@ -1,5 +1,4 @@
 Node1:
-
 ``
 sudo apt update
 sudo apt install mysql-server -y
@@ -8,7 +7,7 @@ sudo apt install mysql-server -y
 ``
 cd /etc/mysql/mysql.conf.d/mysqld.cnf
 ``
-This file has:
+Este archivo debe tener:
 
 [mysqld]
 
@@ -24,12 +23,11 @@ myisam-recover-options  = BACKUP
 log_error = /var/log/mysql/error.log
 max_binlog_size   = 100M
 
-Then, restart the service mysql:
+Luego, reiniciar el servicio de mysql:
 ``
 sudo systemctl restart mysql
 ``
-connect to mysql:
-
+Conectar a mysql:
 ``
 sudo mysql
 ``
@@ -38,52 +36,53 @@ CREATE USER 'repl'@'%' IDENTIFIED BY 'password';
 GRANT REPLICATION SLAVE ON *.* TO 'repl'@'%';
 FLUSH PRIVILEGES;
 ``
-
-We need to change something to have secure SSL and not have errors:
-
+(Importante) Necesitamos cambiar una propiedad del usuario replicador para que tenga seguridad SSL y prevenir errores:
 ``
 ALTER USER 'repl'@'192.168.60.%' IDENTIFIED WITH mysql_native_password BY 'password';
 FLUSH PRIVILEGES;
 SHOW MASTER STATUS;
 ``
-
 ``
 mysql> SHOW MASTER STATUS;
 ``
-
 +------------------+----------+--------------+------------------+-------------------+
 | File             | Position | Binlog_Do_DB | Binlog_Ignore_DB | Executed_Gtid_Set |
 +------------------+----------+--------------+------------------+-------------------+
 | mysql-bin.000002 |     1015 |              |                  |                   |
 +------------------+----------+--------------+------------------+-------------------+
 
-Save file and position to other nodes
+Guardar el registro de las columnas "File" y "Position" para configurar los nodos esclavos
 
-On the others nodes:
-
+En los otros nodos:
 ``
 sudo apt update
 sudo apt install mysql-server -y
 ``
 ``
 cd /etc/mysql/mysql.conf.d/mysqld.cnf
+sudo vim mysqld.cnf
 ``
 Node 2:
 
 bind-address = 192.168.60.12 
 server-id = 2 
 relay-log = /var/log/mysql/mysql-relay-bin.log
+read_only = 1
+super_read_only = 1
+
 
 Node 3:
 
 bind-address = 192.168.60.13
 server-id = 3
 relay-log = /var/log/mysql/mysql-relay-bin.log
+read_only = 1
+super_read_only = 1
 
 ``
 sudo mysql
 ``
-
+(Importante) Cambiar MASTER_LOG_FILE y MASTER_LOG_POS; Con los valores que nos arrojó el nodo maestro antes
 ``
 CHANGE MASTER TO
 MASTER_HOST='192.168.60.11',
@@ -93,19 +92,18 @@ MASTER_LOG_FILE='mysql-bin.xxxxxx',
 MASTER_LOG_POS=XXX;
 ``
 
-Remember to change MASTER_LOG_FILE and MASTER_LOG_POS=XXX; to value's master (Node1)
+Empezar la replica
 
 ``
 START SLAVE;
 SHOW SLAVE STATUS\G;
 ``
 
-If there is not error and the value of the variables "Slave_IO_Running" and "Slave_SQL_Running" 
-are "Yes", mysql was implemented successfully
+Si el valor de las variables "Slave_IO_Running" and "Slave_SQL_Running"  es igual a "Yes", mysql se implementó correctamente
 
-We can test the service with:
+Nosotros podemos probar el servicio:
 
-From node1:
+Desde node1:
 
 ``
 CREATE DATABASE test;
@@ -114,12 +112,12 @@ CREATE TABLE prueba (id INT PRIMARY KEY, mensaje VARCHAR(50));
 INSERT INTO prueba VALUES (1, 'Hola desde el maestro');
 ``
 
-From node 2 and 3:
+Desde node 2 and 3:
 
 ``
 sudo mysql
 ``
-
+Probar sincronizacion
 ``
 mysql> SELECT * FROM test.prueba;
 ``
@@ -129,51 +127,47 @@ mysql> SELECT * FROM test.prueba;
 |  1 | Hola desde el maestro |
 +----+-----------------------+
 
-Then, we will install and configure nginx on node1:
+Ahora, nosotros instalaremos y configuraremos nginx en el nodo1:
 
 
-Create new config file to proxy on /etc/nginx/sites-available/default
+Create new config to proxy on /etc/nginx/nginx.conf
 
 ``
-cd /etc/nginx/sites-available/
-sudo nano /etc/nginx/sites-available/mysql_load_balancer
+
+cd /etc/nginx/nginx.conf
+sudo vim /etc/nginx/nginx.conf
+
 ``
 
 this file must have:
 
-upstream mysql_slaves {
-    least_conn;
-    server 192.168.60.12:3306;  # Node2 - MySQL esclavo
-    server 192.168.60.13:3306;  # Node3 - MySQL esclavo
-}
-
-server {
-    listen 3307;
-
-    location /write {
-        proxy_pass http://192.168.60.11:3306;  # Node1 - MySQL master
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header Host $host;
+stream {
+    # Definir upstream para los esclavos (balanceo de carga)
+    upstream mysql_slaves {
+        least_conn;  # Distribuir conexiones según las menos activas
+        server 192.168.60.12:3306;  # Node2 - MySQL Esclavo
+        server 192.168.60.13:3306;  # Node3 - MySQL Esclavo
     }
 
-    location /read {
-        proxy_pass http://mysql_slaves;  # Balanceo de carga a esclavos
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header Host $host;
+    # Proxy para consultas de escritura (Maestro)
+    server {
+        listen 3307;
+        proxy_pass 192.168.60.11:3306;  # Node1 - MySQL Maestro
+        proxy_timeout 10s;
+        proxy_connect_timeout 1s;
+    }
+
+    # Proxy para consultas de lectura (Esclavos)
+    server {
+        listen 3308;
+        proxy_pass mysql_slaves;  # Balanceo de carga entre esclavos
+        proxy_timeout 10s;
+        proxy_connect_timeout 1s;
     }
 }
 
 
-Now, we will create a symbolic link and verify that everything is ok 
-
-``
-sudo ln -s /etc/nginx/sites-available/mysql_load_balancer /etc/nginx/sites-enabled/
-sudo nginx -t
-``
-
-Restart nginx
+Ahora reiniciamos nginx
 
 ``
 
@@ -181,3 +175,91 @@ sudo systemctl restart nginx
 
 ``
 
+Para probarlo
+
+El puerto 3308 es de los nodos esclavos (solo lectura)
+El puerto 3307 es del nodo maestro (Escritura)
+
+Prueba de lectura:
+
+  Se redirige a un nodo esclavo mediante least_conn lo cual distribuye conexiones según los nodos esclavos menos activos
+
+  mysql -h 192.168.60.11 -P 3308 -u test -p -e "SELECT * FROM test.prueba;"
+
+Prueba de escritura:
+
+    Prueba de que se puede hacer escritura al nodo 1:
+
+    mysql -h 192.168.60.11 -P 3307 -u test -p -e "INSERT INTO test.prueba (id, mensaje) VALUES (7, 'PruebaEscritura2');"
+
+    Prueba de que NO se puede hacer escritura a los nodos esclavos:
+
+    Node2:
+
+    mysql -h 192.168.60.11 -P 3308 -u test -p -e "INSERT INTO test.prueba (id, mensaje) VALUES (2, 'PruebaNodo2');"
+
+    Node3:
+
+    mysql -h 192.168.60.11 -P 3308 -u test -p -e "INSERT INTO test.prueba (id, mensaje) VALUES (3, 'PruebaNodo3');"
+
+    Pruebas de balanceo de carga con sysbench:
+
+``````
+    sysbench \
+  --db-driver=mysql \
+  --mysql-host=192.168.60.11 \
+  --mysql-port=3306 \
+  --mysql-user=test \
+  --mysql-password=test \
+  --mysql-db=sbtest \
+  --tables=10 \
+  --table-size=100000 \
+  oltp_read_write prepare
+``````
+
+Prueba de escritura:
+``````
+sysbench \
+  --db-driver=mysql \
+  --mysql-host=192.168.60.11 \
+  --mysql-port=3307 \
+  --mysql-user=test \
+  --mysql-password=test \
+  --mysql-db=sbtest \
+  --tables=10 \
+  --table-size=100000 \
+  --threads=10 \
+  --time=60 \
+  oltp_read_write run
+``````
+
+Prueba de lectura:
+
+``````
+sysbench \
+  --db-driver=mysql \
+  --mysql-host=192.168.60.11 \
+  --mysql-port=3308 \
+  --mysql-user=test \
+  --mysql-password=test \
+  --mysql-db=sbtest \
+  --tables=10 \
+  --table-size=100000 \
+  --threads=10 \
+  --time=60 \
+  oltp_read_only run
+``````
+
+Eliminar bd de prueba:
+``````
+sysbench \
+  --db-driver=mysql \
+  --mysql-host=192.168.60.11 \
+  --mysql-port=3306 \
+  --mysql-user=test \
+  --mysql-password=test \
+  --mysql-db=sbtest \
+  --tables=10 \
+  --table-size=100000 \
+  oltp_read_write cleanup
+``````
