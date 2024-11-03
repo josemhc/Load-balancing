@@ -1,16 +1,16 @@
 Node1:
-``
+````
 sudo apt update
 sudo apt install mysql-server -y
-``
+````
 
-``
+````
 cd /etc/mysql/mysql.conf.d/mysqld.cnf
-``
+````
 
 Este archivo debe tener:
 
-```
+````
 [mysqld]
 
 bind-address = 192.168.60.11
@@ -24,27 +24,29 @@ myisam-recover-options  = BACKUP
 
 log_error = /var/log/mysql/error.log
 max_binlog_size   = 100M
-```
+````
 
 Luego, reiniciar el servicio de mysql:
 
-``
+````
 sudo systemctl restart mysql
-``
+````
 
 Conectar a mysql:
 
-``
+````
 sudo mysql
-``
+````
 
 Crear usuario para replica
 
-``
+````
 CREATE USER 'repl'@'%' IDENTIFIED BY 'password';
+
 GRANT REPLICATION SLAVE ON *.* TO 'repl'@'%';
+
 FLUSH PRIVILEGES;
-``
+````
 
 (Importante) Necesitamos cambiar una propiedad del usuario replicador para que tenga seguridad SSL y prevenir errores:
 
@@ -56,69 +58,69 @@ SHOW MASTER STATUS;
 
 Mostrar estado del maestro:
 
-``
+````
 mysql> SHOW MASTER STATUS;
 +------------------+----------+--------------+------------------+-------------------+
 | File             | Position | Binlog_Do_DB | Binlog_Ignore_DB | Executed_Gtid_Set |
 +------------------+----------+--------------+------------------+-------------------+
 | mysql-bin.000002 |     1015 |              |                  |                   |
 +------------------+----------+--------------+------------------+-------------------+
-``
+````
 
 Guardar el registro de las columnas "File" y "Position" para configurar los nodos esclavos
 
 En los otros nodos:
 
-``
+````
 sudo apt update
 sudo apt install mysql-server -y
-``
-``
+````
+````
 cd /etc/mysql/mysql.conf.d/mysqld.cnf
 sudo vim mysqld.cnf
-``
+````
 
 Node 2:
 
-``
+````
 bind-address = 192.168.60.12 
 server-id = 2 
 relay-log = /var/log/mysql/mysql-relay-bin.log
 read_only = 1
 super_read_only = 1
-``
+````
 
 Node 3:
 
-``
+````
 bind-address = 192.168.60.13
 server-id = 3
 relay-log = /var/log/mysql/mysql-relay-bin.log
 read_only = 1
 super_read_only = 1
-``
+````
 
-``
+````
 sudo mysql
-``
+````
 
 (Importante) Cambiar MASTER_LOG_FILE y MASTER_LOG_POS; Con los valores que nos arrojó el nodo maestro antes
 
-``
+````
 CHANGE MASTER TO
 MASTER_HOST='192.168.60.11',
 MASTER_USER='repl',
 MASTER_PASSWORD='password',
 MASTER_LOG_FILE='mysql-bin.xxxxxx',  
 MASTER_LOG_POS=XXX;
-``
+````
 
 Empezar la replica
 
-``
+````
 START SLAVE;
 SHOW SLAVE STATUS\G;
-``
+````
 
 Si el valor de las variables "Slave_IO_Running" and "Slave_SQL_Running"  es igual a "Yes", mysql se implementó correctamente
 
@@ -126,46 +128,46 @@ Nosotros podemos probar el servicio:
 
 Desde node1:
 
-``
+````
 CREATE DATABASE test;
 USE test;
 CREATE TABLE prueba (id INT PRIMARY KEY, mensaje VARCHAR(50));
 INSERT INTO prueba VALUES (1, 'Hola desde el maestro');
-``
+````
 
 Desde node 2 and 3:
 
-``
+````
 sudo mysql
-``
+````
 
 Probar sincronizacion
 
-``
+````
 mysql> SELECT * FROM test.prueba;
-``
+````
 
-``
+````
 +----+-----------------------+
 | id | mensaje               |
 +----+-----------------------+
 |  1 | Hola desde el maestro |
 +----+-----------------------+
-``
+````
 
 Ahora, nosotros instalaremos y configuraremos nginx en el nodo1:
 
 
 Create new config to proxy on /etc/nginx/nginx.conf
 
-``
+````
 cd /etc/nginx/nginx.conf
 sudo vim /etc/nginx/nginx.conf
-``
+````
 
 this file must have:
 
-```
+````
 stream {
     # Definir upstream para los esclavos (balanceo de carga)
     upstream mysql_slaves {
@@ -190,13 +192,13 @@ stream {
         proxy_connect_timeout 1s;
     }
 }
-```
+````
 
 Ahora reiniciamos nginx
 
-``
+````
 sudo systemctl restart nginx
-``
+````
 
 Para probarlo
 
@@ -207,31 +209,31 @@ Prueba de lectura:
 
 Se redirige a un nodo esclavo mediante least_conn lo cual distribuye conexiones según los nodos esclavos menos activos
 
-``
+````
 mysql -h 192.168.60.11 -P 3308 -u test -p -e "SELECT * FROM test.prueba;"
-``
+````
 
 Prueba de escritura:
 
 Prueba de que se puede hacer escritura al nodo 1:
 
-```
+`````
 mysql -h 192.168.60.11 -P 3307 -u test -p -e "INSERT INTO test.prueba (id, mensaje) VALUES (7, 'PruebaEscritura2');"
-```
+`````
 
 Prueba de que NO se puede hacer escritura a los nodos esclavos:
 
 Node2:
 
-```
+````
 mysql -h 192.168.60.11 -P 3308 -u test -p -e "INSERT INTO test.prueba (id, mensaje) VALUES (2, 'PruebaNodo2');"
-```
+````
 
 Node3:
 
-```
+````
 mysql -h 192.168.60.11 -P 3308 -u test -p -e "INSERT INTO test.prueba (id, mensaje) VALUES (3, 'PruebaNodo3');"
-```
+````
 
 Pruebas de balanceo de carga con sysbench:
 
